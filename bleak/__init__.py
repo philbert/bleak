@@ -29,6 +29,7 @@ else:
     from typing import Never, Self, Unpack, assert_never
 
 from bleak.args.bluez import BlueZScannerArgs
+from bleak.args.connection import ConnectionParameters, ConnectionPolicy
 from bleak.args.corebluetooth import CBScannerArgs, CBStartNotifyArgs
 from bleak.args.winrt import WinRTClientArgs
 from bleak.backends import BleakBackend
@@ -466,6 +467,12 @@ class BleakClient:
             In rare cases, on other platforms, it might be necessary to pair the
             device first in order to be able to even enumerate the services during
             the connection process.
+        connection_parameters:
+            Optional BLE connection parameters for tuning connection behavior.
+            If provided, these parameters will be applied during or after connection
+            on platforms that support it. If ``None`` or if the platform does not
+            support connection parameter tuning, default connection parameters will
+            be used. See :class:`ConnectionParameters` for details.
         winrt:
             Dictionary of WinRT/Windows platform-specific options.
         backend:
@@ -500,6 +507,9 @@ class BleakClient:
 
     .. versionchanged:: 1.0
         Added ``pair`` parameter.
+
+    .. versionchanged:: 2.1
+        Added ``connection_parameters`` parameter.
     """
 
     def __init__(
@@ -510,6 +520,7 @@ class BleakClient:
         *,
         timeout: float = 10.0,
         pair: bool = False,
+        connection_parameters: Optional[ConnectionParameters] = None,
         winrt: WinRTClientArgs = {},
         backend: Optional[type[BaseBleakClient]] = None,
         **kwargs: Any,
@@ -531,6 +542,7 @@ class BleakClient:
                 None if services is None else set(map(normalize_uuid_str, services))
             ),
             timeout=timeout,
+            connection_parameters=connection_parameters,
             winrt=winrt,
             **kwargs,
         )
@@ -655,6 +667,30 @@ class BleakClient:
             No longer returns ``True``. Instead, the return type is ``None``.
         """
         await self._backend.unpair()
+
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """
+        Update the BLE connection parameters at runtime.
+
+        This is a best-effort request to adjust connection parameters for an
+        active connection. Platform support varies:
+
+        - **Linux/BlueZ**: Supported via D-Bus API
+        - **macOS**: Limited or no support
+        - **Windows**: Limited or no support
+
+        If the platform does not support parameter updates or if the device
+        is not connected, this method will log a debug message but will not
+        raise an error.
+
+        Args:
+            connection_parameters: The desired connection parameters.
+
+        .. versionadded:: 2.1
+        """
+        await self._backend.update_connection_parameters(connection_parameters)
 
     @property
     def is_connected(self) -> bool:

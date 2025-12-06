@@ -30,6 +30,7 @@ from CoreBluetooth import (
 from Foundation import NSArray, NSData
 
 from bleak import BleakScanner
+from bleak.args.connection import ConnectionParameters
 from bleak.args.corebluetooth import CBStartNotifyArgs
 from bleak.assigned_numbers import gatt_char_props_to_strs
 from bleak.backends.characteristic import BleakGATTCharacteristic
@@ -218,6 +219,32 @@ class BleakClientCoreBluetooth(BaseBleakClient):
                 to do a pairing.
         """
         raise NotImplementedError("Pairing is not available in Core Bluetooth.")
+
+    @override
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """Update BLE connection parameters.
+
+        Note:
+            CoreBluetooth does not provide an API to directly control connection
+            parameters from the application level. The OS manages these parameters
+            automatically based on system state and power considerations.
+
+            This method logs the requested parameters but does not apply them.
+
+        Args:
+            connection_parameters: The desired connection parameters (ignored).
+        """
+        logger.debug(
+            "Connection parameter updates are not supported on macOS. "
+            "CoreBluetooth manages connection parameters automatically. "
+            "Requested parameters: interval=%s-%sms, latency=%s, timeout=%sms",
+            connection_parameters.min_interval_ms,
+            connection_parameters.max_interval_ms,
+            connection_parameters.latency,
+            connection_parameters.supervision_timeout_ms,
+        )
 
     async def _get_services(self) -> BleakGATTServiceCollection:
         """Get all services registered for this GATT server.

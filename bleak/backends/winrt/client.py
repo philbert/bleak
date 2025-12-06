@@ -68,6 +68,7 @@ from winrt.windows.foundation import (
 from winrt.windows.storage.streams import Buffer as WinBuffer
 
 from bleak import BleakScanner
+from bleak.args.connection import ConnectionParameters
 from bleak.args.winrt import WinRTClientArgs as _WinRTClientArgs
 from bleak.assigned_numbers import gatt_char_props_to_strs
 from bleak.backends.characteristic import BleakGATTCharacteristic
@@ -666,6 +667,32 @@ class BleakClientWinRT(BaseBleakClient):
             logger.info("Unpaired with device.")
         finally:
             device.close()
+
+    @override
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """Update BLE connection parameters.
+
+        Note:
+            Windows does not provide a public API to directly control BLE connection
+            parameters from the application level. The Windows Bluetooth stack manages
+            these parameters automatically based on system state and requirements.
+
+            This method logs the requested parameters but does not apply them.
+
+        Args:
+            connection_parameters: The desired connection parameters (ignored).
+        """
+        logger.debug(
+            "Connection parameter updates are not supported on Windows. "
+            "The Windows Bluetooth stack manages connection parameters automatically. "
+            "Requested parameters: interval=%s-%sms, latency=%s, timeout=%sms",
+            connection_parameters.min_interval_ms,
+            connection_parameters.max_interval_ms,
+            connection_parameters.latency,
+            connection_parameters.supervision_timeout_ms,
+        )
 
     # GATT services methods
 

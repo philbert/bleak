@@ -5,7 +5,7 @@ Base class for backend clients.
 import abc
 import sys
 from collections.abc import Callable
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 if sys.version_info < (3, 12):
     from typing_extensions import Buffer
@@ -18,6 +18,9 @@ from bleak.backends.descriptor import BleakGATTDescriptor
 from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTServiceCollection
 from bleak.exc import BleakError
+
+if TYPE_CHECKING:
+    from bleak.args.connection import ConnectionParameters
 
 NotifyCallback = Callable[[bytearray], None]
 
@@ -48,6 +51,9 @@ class BaseBleakClient(abc.ABC):
         self._timeout = kwargs.get("timeout", 10.0)
         self._disconnected_callback: Optional[Callable[[], None]] = kwargs.get(
             "disconnected_callback"
+        )
+        self._connection_parameters: Optional[ConnectionParameters] = kwargs.get(
+            "connection_parameters"
         )
 
     # NB: this is not marked as @abc.abstractmethod because that would break
@@ -106,6 +112,22 @@ class BaseBleakClient(abc.ABC):
     async def unpair(self) -> None:
         """Unpair with the peripheral."""
         raise NotImplementedError()
+
+    # NB: this is not marked as @abc.abstractmethod because that would break
+    # 3rd-party backends that don't implement it yet.
+    async def update_connection_parameters(
+        self, connection_parameters: "ConnectionParameters"
+    ) -> None:
+        """Update BLE connection parameters.
+
+        This is a best-effort request to adjust connection parameters for an
+        active connection. Platform support varies. Backends that don't support
+        this should log a debug message and do nothing.
+
+        Args:
+            connection_parameters: The desired connection parameters.
+        """
+        pass
 
     @property
     @abc.abstractmethod

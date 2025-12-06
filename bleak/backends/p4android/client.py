@@ -23,6 +23,7 @@ else:
 from android.broadcast import BroadcastReceiver
 from jnius import java_method
 
+from bleak.args.connection import ConnectionParameters
 from bleak.assigned_numbers import gatt_char_props_to_strs
 from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak.backends.client import BaseBleakClient, NotifyCallback
@@ -213,6 +214,32 @@ class BleakClientP4Android(BaseBleakClient):
         """Unpair with the peripheral."""
         warnings.warn(
             "Unpairing is seemingly unavailable in the Android API at the moment."
+        )
+
+    @override
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """Update BLE connection parameters.
+
+        Note:
+            Android's python-for-android API does not currently expose methods
+            to directly control BLE connection parameters. The Android Bluetooth
+            stack manages these parameters automatically.
+
+            This method logs the requested parameters but does not apply them.
+
+        Args:
+            connection_parameters: The desired connection parameters (ignored).
+        """
+        logger.debug(
+            "Connection parameter updates are not supported on Android via python-for-android. "
+            "The Android Bluetooth stack manages connection parameters automatically. "
+            "Requested parameters: interval=%s-%sms, latency=%s, timeout=%sms",
+            connection_parameters.min_interval_ms,
+            connection_parameters.max_interval_ms,
+            connection_parameters.latency,
+            connection_parameters.supervision_timeout_ms,
         )
 
     @property

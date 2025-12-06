@@ -34,6 +34,7 @@ from dbus_fast.message import Message
 from dbus_fast.signature import Variant
 
 from bleak import BleakScanner
+from bleak.args.connection import ConnectionParameters, get_policy_defaults
 from bleak.backends.bluezdbus import defs
 from bleak.backends.bluezdbus.manager import get_global_bluez_manager
 from bleak.backends.bluezdbus.scanner import BleakScannerBlueZDBus
@@ -356,6 +357,12 @@ class BleakClientBlueZDBus(BaseBleakClient):
                         dangerous_use_bleak_cache=dangerous_use_bleak_cache
                     )
 
+                    # Apply connection parameters if provided
+                    if self._connection_parameters is not None:
+                        await self.update_connection_parameters(
+                            self._connection_parameters
+                        )
+
                     stack.pop_all()
                     return
 
@@ -569,6 +576,81 @@ class BleakClientBlueZDBus(BaseBleakClient):
                     self.address, f"Device with address {self.address} was not found."
                 ) from e
             raise
+
+    @override
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """Update BLE connection parameters.
+
+        This method attempts to update the connection parameters for an active
+        connection on Linux/BlueZ. Note that BlueZ has limited direct control
+        over connection parameters - the kernel and Bluetooth controller make
+        the final decisions.
+
+        Args:
+            connection_parameters: The desired connection parameters.
+
+        Note:
+            BlueZ does not provide a direct D-Bus API to set connection interval,
+            latency, and supervision timeout from userspace. These parameters are
+            typically negotiated by the kernel and Bluetooth controller.
+
+            This implementation logs the requested parameters but cannot enforce
+            them directly. Future BlueZ versions may provide more control.
+        """
+        if not self.is_connected:
+            logger.debug(
+                "Cannot update connection parameters - device is not connected"
+            )
+            return
+
+        # Resolve policy to numeric values if needed
+        params = connection_parameters
+        if params.policy is not None and (
+            params.min_interval_ms is None
+            or params.max_interval_ms is None
+            or params.latency is None
+            or params.supervision_timeout_ms is None
+        ):
+            defaults = get_policy_defaults(params.policy)
+            params = ConnectionParameters(
+                min_interval_ms=params.min_interval_ms or defaults.min_interval_ms,
+                max_interval_ms=params.max_interval_ms or defaults.max_interval_ms,
+                latency=params.latency or defaults.latency,
+                supervision_timeout_ms=params.supervision_timeout_ms
+                or defaults.supervision_timeout_ms,
+                policy=params.policy,
+                preferred_phys=params.preferred_phys,
+                preferred_mtu=params.preferred_mtu,
+            )
+
+        logger.debug(
+            "Connection parameter update requested for %s: "
+            "interval=%s-%sms, latency=%s, timeout=%sms, phys=%s, mtu=%s",
+            self.address,
+            params.min_interval_ms,
+            params.max_interval_ms,
+            params.latency,
+            params.supervision_timeout_ms,
+            params.preferred_phys,
+            params.preferred_mtu,
+        )
+
+        # BlueZ does not currently expose a D-Bus API to directly control
+        # connection parameters (interval, latency, timeout) from userspace.
+        # These are typically handled automatically by the kernel and controller.
+        #
+        # Some possible future approaches if BlueZ adds support:
+        # - Using experimental features if available
+        # - Setting device properties if new properties are added
+        # - Using ConnectProfile with specific options
+        #
+        # For now, we log the request but cannot enforce it.
+        logger.debug(
+            "BlueZ does not support direct connection parameter tuning via D-Bus. "
+            "Parameters logged for reference but not applied."
+        )
 
     @property
     @override
