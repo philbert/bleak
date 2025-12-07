@@ -29,7 +29,7 @@ else:
     from typing import Never, Self, Unpack, assert_never
 
 from bleak.args.bluez import BlueZScannerArgs
-from bleak.args.connection import ConnectionParameters, ConnectionPolicy
+from bleak.args.connection import ConnectionParameters
 from bleak.args.corebluetooth import CBScannerArgs, CBStartNotifyArgs
 from bleak.args.winrt import WinRTClientArgs
 from bleak.backends import BleakBackend

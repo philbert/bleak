@@ -74,7 +74,9 @@ class TestConnectionParameters:
 
     def test_validation_min_max_order(self):
         """Test that min_interval must be <= max_interval."""
-        with pytest.raises(ValueError, match="min_interval_ms.*must be <=.*max_interval_ms"):
+        with pytest.raises(
+            ValueError, match="min_interval_ms.*must be <=.*max_interval_ms"
+        ):
             ConnectionParameters(
                 min_interval_ms=200,
                 max_interval_ms=100,

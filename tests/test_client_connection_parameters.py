@@ -39,7 +39,9 @@ class TestBleakClientConnectionParameters:
 
         assert client is not None
         assert client._backend._connection_parameters == params
-        assert client._backend._connection_parameters.policy == ConnectionPolicy.POWER_SAVE
+        assert (
+            client._backend._connection_parameters.policy == ConnectionPolicy.POWER_SAVE
+        )
 
     def test_client_init_without_connection_parameters(self):
         """Test backward compatibility - no connection parameters."""

@@ -36,6 +36,7 @@ from dbus_fast.signature import Variant
 from bleak import BleakScanner
 from bleak.args.connection import ConnectionParameters, get_policy_defaults
 from bleak.backends.bluezdbus import defs
+from bleak.backends.bluezdbus.hci_mgmt import update_connection_parameters_via_mgmt
 from bleak.backends.bluezdbus.manager import get_global_bluez_manager
 from bleak.backends.bluezdbus.scanner import BleakScannerBlueZDBus
 from bleak.backends.bluezdbus.utils import assert_reply, get_dbus_authenticator
@@ -577,34 +578,18 @@ class BleakClientBlueZDBus(BaseBleakClient):
                 ) from e
             raise
 
-    @override
-    async def update_connection_parameters(
+    async def _apply_connection_parameters(
         self, connection_parameters: ConnectionParameters
     ) -> None:
-        """Update BLE connection parameters.
+        """
+        Internal helper to apply connection parameters.
 
-        This method attempts to update the connection parameters for an active
-        connection on Linux/BlueZ. Note that BlueZ has limited direct control
-        over connection parameters - the kernel and Bluetooth controller make
-        the final decisions.
+        This attempts to update the connection parameters using the Linux kernel's
+        HCI management interface.
 
         Args:
             connection_parameters: The desired connection parameters.
-
-        Note:
-            BlueZ does not provide a direct D-Bus API to set connection interval,
-            latency, and supervision timeout from userspace. These parameters are
-            typically negotiated by the kernel and Bluetooth controller.
-
-            This implementation logs the requested parameters but cannot enforce
-            them directly. Future BlueZ versions may provide more control.
         """
-        if not self.is_connected:
-            logger.debug(
-                "Cannot update connection parameters - device is not connected"
-            )
-            return
-
         # Resolve policy to numeric values if needed
         params = connection_parameters
         if params.policy is not None and (
@@ -625,32 +610,111 @@ class BleakClientBlueZDBus(BaseBleakClient):
                 preferred_mtu=params.preferred_mtu,
             )
 
+        # Ensure we have all required numeric parameters
+        if (
+            params.min_interval_ms is None
+            or params.max_interval_ms is None
+            or params.latency is None
+            or params.supervision_timeout_ms is None
+        ):
+            logger.warning(
+                "Connection parameters missing required values. "
+                "min_interval_ms, max_interval_ms, latency, and supervision_timeout_ms "
+                "must all be set (either explicitly or via policy)."
+            )
+            return
+
         logger.debug(
-            "Connection parameter update requested for %s: "
-            "interval=%s-%sms, latency=%s, timeout=%sms, phys=%s, mtu=%s",
+            "Applying connection parameters for %s: "
+            "interval=%s-%sms, latency=%s, timeout=%sms",
             self.address,
             params.min_interval_ms,
             params.max_interval_ms,
             params.latency,
             params.supervision_timeout_ms,
-            params.preferred_phys,
-            params.preferred_mtu,
         )
 
-        # BlueZ does not currently expose a D-Bus API to directly control
-        # connection parameters (interval, latency, timeout) from userspace.
-        # These are typically handled automatically by the kernel and controller.
-        #
-        # Some possible future approaches if BlueZ adds support:
-        # - Using experimental features if available
-        # - Setting device properties if new properties are added
-        # - Using ConnectProfile with specific options
-        #
-        # For now, we log the request but cannot enforce it.
-        logger.debug(
-            "BlueZ does not support direct connection parameter tuning via D-Bus. "
-            "Parameters logged for reference but not applied."
+        # Extract adapter ID from adapter path
+        # Adapter path format: /org/bluez/hci0, /org/bluez/hci1, etc.
+        try:
+            adapter_path = await self._get_adapter_path()
+            adapter_name = adapter_path.split("/")[-1]  # e.g., "hci0"
+
+            if not adapter_name.startswith("hci"):
+                logger.warning(
+                    f"Unexpected adapter path format: {adapter_path}. "
+                    "Cannot determine adapter ID for connection parameter update."
+                )
+                return
+
+            adapter_id = int(adapter_name[3:])  # Extract number from "hciN"
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to determine adapter ID for connection parameter update: {e}"
+            )
+            return
+
+        # Determine address type from device info
+        # BlueZ stores this in the AddressType property
+        address_type = "public"  # Default
+        if self._device_info and "AddressType" in self._device_info:
+            bluez_addr_type = self._device_info["AddressType"]
+            address_type = "random" if bluez_addr_type == "random" else "public"
+
+        # Attempt to update parameters via HCI management interface
+        success = await update_connection_parameters_via_mgmt(
+            adapter_id=adapter_id,
+            device_address=self.address,
+            address_type=address_type,
+            min_interval_ms=params.min_interval_ms,
+            max_interval_ms=params.max_interval_ms,
+            latency=params.latency,
+            supervision_timeout_ms=params.supervision_timeout_ms,
         )
+
+        if success:
+            logger.info(
+                f"Successfully requested connection parameter update for {self.address}. "
+                "Note: The kernel and controller will decide whether to apply these parameters."
+            )
+        else:
+            logger.debug(
+                f"Could not apply connection parameters for {self.address}. "
+                "This may require elevated permissions (CAP_NET_ADMIN or root)."
+            )
+
+    @override
+    async def update_connection_parameters(
+        self, connection_parameters: ConnectionParameters
+    ) -> None:
+        """Update BLE connection parameters.
+
+        This method attempts to update the connection parameters for an active
+        connection on Linux/BlueZ using the kernel's HCI management interface.
+
+        The kernel and Bluetooth controller make the final decision on whether
+        to apply the requested parameters. This is a best-effort request.
+
+        Args:
+            connection_parameters: The desired connection parameters.
+
+        Note:
+            This operation requires either CAP_NET_ADMIN capability or root
+            privileges. If insufficient permissions are available, the request
+            will be logged but not applied.
+
+            The parameters serve as hints to the kernel. The actual connection
+            parameters negotiated may differ based on device capabilities and
+            current link conditions.
+        """
+        if not self.is_connected:
+            logger.debug(
+                "Cannot update connection parameters - device is not connected"
+            )
+            return
+
+        await self._apply_connection_parameters(connection_parameters)
 
     @property
     @override

@@ -127,10 +127,14 @@ class ConnectionParameters:
                 )
 
         if self.min_interval_ms is not None and self.min_interval_ms < 0:
-            raise ValueError(f"min_interval_ms must be >= 0, got {self.min_interval_ms}")
+            raise ValueError(
+                f"min_interval_ms must be >= 0, got {self.min_interval_ms}"
+            )
 
         if self.max_interval_ms is not None and self.max_interval_ms < 0:
-            raise ValueError(f"max_interval_ms must be >= 0, got {self.max_interval_ms}")
+            raise ValueError(
+                f"max_interval_ms must be >= 0, got {self.max_interval_ms}"
+            )
 
         if self.latency is not None and self.latency < 0:
             raise ValueError(f"latency must be >= 0, got {self.latency}")
