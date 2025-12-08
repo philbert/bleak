@@ -14,9 +14,11 @@ class TestConnectionPolicy:
 
     def test_policy_values(self):
         """Test that all expected policy values exist."""
-        assert ConnectionPolicy.LOW_LATENCY.value == "low_latency"
+        assert ConnectionPolicy.FASTEST_RESPONSE.value == "fastest_response"
+        assert ConnectionPolicy.RESPONSIVE.value == "responsive"
         assert ConnectionPolicy.BALANCED.value == "balanced"
-        assert ConnectionPolicy.POWER_SAVE.value == "power_save"
+        assert ConnectionPolicy.SLOW_UPDATES.value == "slow_updates"
+        assert ConnectionPolicy.LOWEST_POWER.value == "lowest_power"
 
 
 class TestConnectionParameters:
@@ -48,8 +50,8 @@ class TestConnectionParameters:
 
     def test_policy_only(self):
         """Test creating ConnectionParameters with just a policy."""
-        params = ConnectionParameters(policy=ConnectionPolicy.POWER_SAVE)
-        assert params.policy == ConnectionPolicy.POWER_SAVE
+        params = ConnectionParameters(policy=ConnectionPolicy.LOWEST_POWER)
+        assert params.policy == ConnectionPolicy.LOWEST_POWER
         # Numeric values should still be None when not explicitly set
         assert params.min_interval_ms is None
         assert params.max_interval_ms is None
@@ -115,52 +117,59 @@ class TestConnectionParameters:
 class TestPolicyDefaults:
     """Tests for get_policy_defaults function."""
 
-    def test_low_latency_defaults(self):
-        """Test LOW_LATENCY policy defaults."""
-        params = get_policy_defaults(ConnectionPolicy.LOW_LATENCY)
-        assert params.policy == ConnectionPolicy.LOW_LATENCY
-        assert params.min_interval_ms is not None
-        assert params.max_interval_ms is not None
-        assert params.latency is not None
-        assert params.supervision_timeout_ms is not None
-        # Low latency should have short intervals
-        assert params.min_interval_ms < 50
-        assert params.max_interval_ms < 100
-        # Low latency should have minimal slave latency
+    def test_fastest_response_defaults(self):
+        """Test FASTEST_RESPONSE policy defaults."""
+        params = get_policy_defaults(ConnectionPolicy.FASTEST_RESPONSE)
+        assert params.policy == ConnectionPolicy.FASTEST_RESPONSE
+        assert params.min_interval_ms == 15
+        assert params.max_interval_ms == 30
         assert params.latency == 0
+        assert params.supervision_timeout_ms == 4000
+
+    def test_responsive_defaults(self):
+        """Test RESPONSIVE policy defaults."""
+        params = get_policy_defaults(ConnectionPolicy.RESPONSIVE)
+        assert params.policy == ConnectionPolicy.RESPONSIVE
+        assert params.min_interval_ms == 30
+        assert params.max_interval_ms == 50
+        assert params.latency == 0
+        assert params.supervision_timeout_ms == 5000
 
     def test_balanced_defaults(self):
         """Test BALANCED policy defaults."""
         params = get_policy_defaults(ConnectionPolicy.BALANCED)
         assert params.policy == ConnectionPolicy.BALANCED
-        assert params.min_interval_ms is not None
-        assert params.max_interval_ms is not None
-        assert params.latency is not None
-        assert params.supervision_timeout_ms is not None
-        # Balanced should have moderate values
-        assert 30 < params.min_interval_ms < 200
-        assert 50 < params.max_interval_ms < 300
+        assert params.min_interval_ms == 50
+        assert params.max_interval_ms == 100
+        assert params.latency == 1
+        assert params.supervision_timeout_ms == 6000
 
-    def test_power_save_defaults(self):
-        """Test POWER_SAVE policy defaults."""
-        params = get_policy_defaults(ConnectionPolicy.POWER_SAVE)
-        assert params.policy == ConnectionPolicy.POWER_SAVE
-        assert params.min_interval_ms is not None
-        assert params.max_interval_ms is not None
-        assert params.latency is not None
-        assert params.supervision_timeout_ms is not None
-        # Power save should have long intervals
-        assert params.min_interval_ms >= 100
-        assert params.max_interval_ms >= 500
-        # Power save should have higher slave latency
-        assert params.latency > 0
+    def test_slow_updates_defaults(self):
+        """Test SLOW_UPDATES policy defaults."""
+        params = get_policy_defaults(ConnectionPolicy.SLOW_UPDATES)
+        assert params.policy == ConnectionPolicy.SLOW_UPDATES
+        assert params.min_interval_ms == 100
+        assert params.max_interval_ms == 200
+        assert params.latency == 4
+        assert params.supervision_timeout_ms == 7000
+
+    def test_lowest_power_defaults(self):
+        """Test LOWEST_POWER policy defaults."""
+        params = get_policy_defaults(ConnectionPolicy.LOWEST_POWER)
+        assert params.policy == ConnectionPolicy.LOWEST_POWER
+        assert params.min_interval_ms == 200
+        assert params.max_interval_ms == 1000
+        assert params.latency == 8
+        assert params.supervision_timeout_ms == 8000
 
     def test_policy_defaults_validation(self):
         """Test that policy defaults pass validation."""
         for policy in [
-            ConnectionPolicy.LOW_LATENCY,
+            ConnectionPolicy.FASTEST_RESPONSE,
+            ConnectionPolicy.RESPONSIVE,
             ConnectionPolicy.BALANCED,
-            ConnectionPolicy.POWER_SAVE,
+            ConnectionPolicy.SLOW_UPDATES,
+            ConnectionPolicy.LOWEST_POWER,
         ]:
             params = get_policy_defaults(policy)
             # Should not raise

@@ -30,7 +30,7 @@ class TestBleakClientConnectionParameters:
 
     def test_client_init_with_policy(self):
         """Test creating BleakClient with connection policy."""
-        params = ConnectionParameters(policy=ConnectionPolicy.POWER_SAVE)
+        params = ConnectionParameters(policy=ConnectionPolicy.LOWEST_POWER)
 
         client = BleakClient(
             "00:11:22:33:44:55",
@@ -40,7 +40,7 @@ class TestBleakClientConnectionParameters:
         assert client is not None
         assert client._backend._connection_parameters == params
         assert (
-            client._backend._connection_parameters.policy == ConnectionPolicy.POWER_SAVE
+            client._backend._connection_parameters.policy == ConnectionPolicy.LOWEST_POWER
         )
 
     def test_client_init_without_connection_parameters(self):
@@ -63,7 +63,7 @@ class TestBleakClientConnectionParameters:
     async def test_update_connection_parameters_callable(self):
         """Test that update_connection_parameters can be called."""
         client = BleakClient("00:11:22:33:44:55")
-        params = ConnectionParameters(policy=ConnectionPolicy.LOW_LATENCY)
+        params = ConnectionParameters(policy=ConnectionPolicy.FASTEST_RESPONSE)
 
         # Should not raise even when not connected
         # (backends should handle gracefully)

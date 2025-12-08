@@ -18,24 +18,38 @@ class ConnectionPolicy(Enum):
     .. versionadded:: 2.1.0
     """
 
-    LOW_LATENCY = "low_latency"
+    FASTEST_RESPONSE = "fastest_response"
     """
-    Optimize for low latency and responsiveness.
-    Typically uses shorter connection intervals with minimal latency.
-    Higher power consumption.
+    Optimize for fastest possible response time.
+    Uses the shortest connection intervals with zero latency.
+    Highest power consumption.
+    """
+
+    RESPONSIVE = "responsive"
+    """
+    Optimize for responsive interaction with moderate power usage.
+    Short connection intervals with zero latency.
+    Higher power consumption than balanced mode.
     """
 
     BALANCED = "balanced"
     """
     Balance between responsiveness and power consumption.
-    Moderate connection intervals with some slave latency.
+    Moderate connection intervals with zero latency.
     """
 
-    POWER_SAVE = "power_save"
+    SLOW_UPDATES = "slow_updates"
     """
-    Optimize for power saving.
-    Uses longer connection intervals with higher slave latency.
-    Suitable for battery-sensitive devices that don't need frequent updates.
+    Optimize for infrequent updates with lower power consumption.
+    Longer connection intervals with some slave latency.
+    Suitable for devices that don't need frequent updates.
+    """
+
+    LOWEST_POWER = "lowest_power"
+    """
+    Optimize for maximum power saving.
+    Uses the longest connection intervals with highest slave latency.
+    Suitable for battery-sensitive devices with very infrequent updates.
     """
 
 
@@ -99,7 +113,7 @@ class ConnectionParameters:
         ... )
         >>>
         >>> # Using policy hint
-        >>> params = ConnectionParameters(policy=ConnectionPolicy.POWER_SAVE)
+        >>> params = ConnectionParameters(policy=ConnectionPolicy.LOWEST_POWER)
         >>>
         >>> # Connect with custom parameters
         >>> async with BleakClient(address, connection_parameters=params) as client:
@@ -157,7 +171,7 @@ def get_policy_defaults(policy: ConnectionPolicy) -> ConnectionParameters:
 
     .. versionadded:: 2.1.0
     """
-    if policy == ConnectionPolicy.LOW_LATENCY:
+    if policy == ConnectionPolicy.FASTEST_RESPONSE:
         return ConnectionParameters(
             min_interval_ms=15,
             max_interval_ms=30,
@@ -165,20 +179,36 @@ def get_policy_defaults(policy: ConnectionPolicy) -> ConnectionParameters:
             supervision_timeout_ms=4000,
             policy=policy,
         )
+    elif policy == ConnectionPolicy.RESPONSIVE:
+        return ConnectionParameters(
+            min_interval_ms=30,
+            max_interval_ms=50,
+            latency=0,
+            supervision_timeout_ms=5000,
+            policy=policy,
+        )
     elif policy == ConnectionPolicy.BALANCED:
         return ConnectionParameters(
             min_interval_ms=50,
             max_interval_ms=100,
-            latency=4,
+            latency=1,
             supervision_timeout_ms=6000,
             policy=policy,
         )
-    elif policy == ConnectionPolicy.POWER_SAVE:
+    elif policy == ConnectionPolicy.SLOW_UPDATES:
+        return ConnectionParameters(
+            min_interval_ms=100,
+            max_interval_ms=200,
+            latency=4,
+            supervision_timeout_ms=7000,
+            policy=policy,
+        )
+    elif policy == ConnectionPolicy.LOWEST_POWER:
         return ConnectionParameters(
             min_interval_ms=200,
             max_interval_ms=1000,
-            latency=15,
-            supervision_timeout_ms=12000,
+            latency=8,
+            supervision_timeout_ms=8000,
             policy=policy,
         )
     else:

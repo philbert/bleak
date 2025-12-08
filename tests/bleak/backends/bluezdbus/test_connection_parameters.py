@@ -69,7 +69,7 @@ class TestBlueZConnectionParameters:
         client._is_connected = True
         client._device_info = {"Adapter": "/org/bluez/hci1", "AddressType": "random"}
 
-        params = ConnectionParameters(policy=ConnectionPolicy.POWER_SAVE)
+        params = ConnectionParameters(policy=ConnectionPolicy.LOWEST_POWER)
 
         with patch(
             "bleak.backends.bluezdbus.client.update_connection_parameters_via_mgmt"
@@ -85,7 +85,7 @@ class TestBlueZConnectionParameters:
             # Policy defaults should have been applied
             assert call_args.kwargs["adapter_id"] == 1  # hci1
             assert call_args.kwargs["address_type"] == "random"
-            # Power save policy should have long intervals and higher latency
+            # Lowest power policy should have long intervals and higher latency
             assert call_args.kwargs["min_interval_ms"] >= 100
             assert call_args.kwargs["max_interval_ms"] >= 500
             assert call_args.kwargs["latency"] > 0
@@ -147,7 +147,7 @@ class TestBlueZConnectionParameters:
         client._is_connected = True
         client._device_info = {"Adapter": "/org/bluez/hci0", "AddressType": "public"}
 
-        params = ConnectionParameters(policy=ConnectionPolicy.LOW_LATENCY)
+        params = ConnectionParameters(policy=ConnectionPolicy.FASTEST_RESPONSE)
 
         with patch(
             "bleak.backends.bluezdbus.client.update_connection_parameters_via_mgmt"
@@ -164,7 +164,7 @@ class TestBlueZConnectionParameters:
         client._is_connected = True
         client._device_info = {"Adapter": "/org/bluez/hci5", "AddressType": "public"}
 
-        params = ConnectionParameters(policy=ConnectionPolicy.LOW_LATENCY)
+        params = ConnectionParameters(policy=ConnectionPolicy.FASTEST_RESPONSE)
 
         with patch(
             "bleak.backends.bluezdbus.client.update_connection_parameters_via_mgmt"
@@ -184,7 +184,7 @@ class TestBlueZConnectionParameters:
             "AddressType": "public",
         }
 
-        params = ConnectionParameters(policy=ConnectionPolicy.LOW_LATENCY)
+        params = ConnectionParameters(policy=ConnectionPolicy.FASTEST_RESPONSE)
 
         with patch(
             "bleak.backends.bluezdbus.client.update_connection_parameters_via_mgmt"
@@ -201,7 +201,7 @@ class TestBlueZConnectionParameters:
         client._is_connected = True
         client._device_info = {"Adapter": "/org/bluez/hci0", "AddressType": "public"}
 
-        params = ConnectionParameters(policy=ConnectionPolicy.LOW_LATENCY)
+        params = ConnectionParameters(policy=ConnectionPolicy.FASTEST_RESPONSE)
 
         with patch(
             "bleak.backends.bluezdbus.client.update_connection_parameters_via_mgmt"
@@ -216,7 +216,7 @@ class TestBlueZConnectionParameters:
     @pytest.mark.asyncio
     async def test_connection_parameters_passed_to_init(self):
         """Test that connection parameters passed to __init__ are stored."""
-        params = ConnectionParameters(policy=ConnectionPolicy.POWER_SAVE)
+        params = ConnectionParameters(policy=ConnectionPolicy.LOWEST_POWER)
 
         client = BleakClientBlueZDBus("AA:BB:CC:DD:EE:FF", connection_parameters=params)
 
